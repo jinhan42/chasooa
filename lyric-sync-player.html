@@ -1,0 +1,1006 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>가사싱크 플레이어</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink-900:#14121A;
+    --ink-800:#1D1A24;
+    --ink-700:#2A2632;
+    --amber:#FFB84D;
+    --amber-dim:#8C6A34;
+    --teal:#42E2B8;
+    --paper:#F5F1E8;
+    --paper-dim:#F5F1E866;
+    --danger:#E85D5D;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--ink-900);
+    color:var(--paper);
+    font-family:'Inter',system-ui,sans-serif;
+    min-height:100vh;
+  }
+  .mono{font-family:'JetBrains Mono',monospace;}
+  :focus-visible{outline:2px solid var(--teal); outline-offset:2px;}
+
+  /* ---------- layout shell ---------- */
+  #app{min-height:100vh;position:relative;}
+  .view{display:none;}
+  .view.active{display:block;}
+
+  /* ---------- setup view ---------- */
+  #view-setup{
+    max-width:560px;margin:0 auto;padding:40px 20px 60px;
+  }
+  .brand{display:flex;align-items:baseline;gap:10px;margin-bottom:6px;}
+  .brand .mark{
+    font-family:'Archivo Black',sans-serif;
+    font-size:28px;letter-spacing:-0.5px;color:var(--amber);
+  }
+  .brand .sub{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--paper-dim);letter-spacing:2px;text-transform:uppercase;}
+  .tagline{color:var(--paper-dim);font-size:14px;margin:0 0 32px;}
+
+  .card{
+    background:var(--ink-800);
+    border:1px solid var(--ink-700);
+    border-radius:var(--radius);
+    padding:22px;
+    margin-bottom:18px;
+  }
+  .card h2{
+    font-size:13px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;
+    color:var(--teal);margin:0 0 16px;
+    font-family:'JetBrains Mono',monospace;
+  }
+
+  .tabs{display:flex;gap:8px;margin-bottom:16px;}
+  .tab-btn{
+    flex:1;padding:10px 12px;border-radius:10px;border:1px solid var(--ink-700);
+    background:transparent;color:var(--paper-dim);font-size:14px;font-weight:600;
+    cursor:pointer;transition:all .15s;
+  }
+  .tab-btn.active{background:var(--amber);color:var(--ink-900);border-color:var(--amber);}
+  .tab-panel{display:none;}
+  .tab-panel.active{display:block;}
+
+  label.field-label{display:block;font-size:12px;color:var(--paper-dim);margin-bottom:6px;}
+  input[type="text"], input[type="url"], input[type="file"], textarea{
+    width:100%;background:var(--ink-900);border:1px solid var(--ink-700);
+    border-radius:10px;color:var(--paper);padding:11px 12px;font-size:14px;
+    font-family:'Inter',sans-serif;
+  }
+  input[type="file"]{padding:9px 10px;font-size:13px;}
+  textarea{resize:vertical;min-height:120px;line-height:1.5;font-family:'JetBrains Mono',monospace;font-size:12.5px;}
+  .hint{font-size:11.5px;color:var(--paper-dim);margin-top:6px;line-height:1.5;}
+
+  .swatches{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:8px;}
+  .swatch{
+    width:32px;height:32px;border-radius:50%;border:2px solid transparent;cursor:pointer;
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.15);
+  }
+  .swatch.selected{border-color:var(--teal);}
+  #custom-color{width:44px;height:32px;padding:2px;border-radius:8px;cursor:pointer;background:var(--ink-900);border:1px solid var(--ink-700);}
+
+  .start-btn{
+    width:100%;padding:15px;border-radius:12px;border:none;
+    background:var(--amber);color:var(--ink-900);font-size:15px;font-weight:700;
+    cursor:pointer;margin-top:4px;letter-spacing:.3px;
+    transition:transform .1s;
+  }
+  .start-btn:active{transform:scale(.98);}
+  .start-btn:disabled{background:var(--ink-700);color:var(--paper-dim);cursor:not-allowed;}
+  #setup-error{color:var(--danger);font-size:13px;margin-top:10px;display:none;}
+
+  .tapsync-btn{
+    width:100%;padding:12px;border-radius:10px;border:1px solid var(--teal);
+    background:transparent;color:var(--teal);font-size:13.5px;font-weight:600;
+    cursor:pointer;margin-top:12px;transition:all .15s;
+  }
+  .tapsync-btn:disabled{border-color:var(--ink-700);color:var(--paper-dim);cursor:not-allowed;}
+  .tapsync-btn:not(:disabled):active{transform:scale(.98);}
+
+  #view-tapsync{max-width:560px;margin:0 auto;padding:40px 20px 60px;}
+  .tapsync-progress{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--paper-dim);margin-bottom:10px;}
+  .tapsync-prev{font-size:14px;color:var(--paper-dim);margin-bottom:14px;min-height:20px;}
+  .tapsync-current{font-size:22px;font-weight:700;line-height:1.45;margin-bottom:22px;min-height:96px;}
+  .tap-btn{
+    width:100%;padding:22px;border-radius:14px;border:none;
+    background:var(--amber);color:var(--ink-900);font-size:16px;font-weight:700;
+    cursor:pointer;margin-bottom:10px;transition:transform .1s;
+  }
+  .tap-btn:active{transform:scale(.98);}
+  .tap-btn:disabled{background:var(--ink-700);color:var(--paper-dim);cursor:not-allowed;}
+  .tapsync-hint{font-size:11.5px;color:var(--paper-dim);text-align:center;margin-bottom:20px;line-height:1.5;}
+  .tapsync-controls{display:flex;gap:8px;margin-bottom:14px;}
+  .tapsync-controls button{
+    flex:1;padding:12px;border-radius:10px;border:1px solid var(--ink-700);
+    background:var(--ink-800);color:var(--paper);font-size:13px;cursor:pointer;
+  }
+  .tapsync-done button{
+    width:100%;padding:15px;border-radius:12px;border:none;
+    background:var(--teal);color:var(--ink-900);font-size:15px;font-weight:700;cursor:pointer;
+  }
+
+  /* ---------- player view ---------- */
+  #view-player{
+    position:fixed;inset:0;flex-direction:column;
+    background:var(--stage-bg, #14121A);transition:background .3s;
+  }
+  #view-player.active{display:flex;}
+  .stage{
+    flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:18px;padding:24px;text-align:center;overflow:hidden;
+  }
+  .lyric-line{font-family:'Archivo Black',sans-serif;line-height:1.25;transition:opacity .25s, transform .25s;}
+  .lyric-prev,.lyric-next{font-size:clamp(14px,2.4vw,20px);color:rgba(255,255,255,.32);}
+  .lyric-current{
+    font-size:clamp(26px,5.4vw,52px);color:var(--paper);
+    text-shadow:0 0 28px rgba(255,184,77,.35);
+    max-width:90%;
+  }
+  .lyric-current.pulse{animation:pulse .25s ease;}
+  @keyframes pulse{0%{transform:scale(.97);opacity:.4;}100%{transform:scale(1);opacity:1;}}
+  @media (prefers-reduced-motion:reduce){
+    .lyric-current.pulse{animation:none;}
+    .lyric-line{transition:none;}
+  }
+
+  .yt-inset{
+    position:absolute;top:16px;right:16px;border-radius:10px;overflow:hidden;
+    box-shadow:0 8px 24px rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.15);
+  }
+
+  .control-bar{
+    background:rgba(0,0,0,.35);backdrop-filter:blur(6px);
+    padding:14px 18px 20px;display:flex;flex-direction:column;gap:10px;
+  }
+  .progress-row{display:flex;align-items:center;gap:10px;}
+  .time-txt{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--paper-dim);min-width:42px;text-align:center;}
+  .progress-track{
+    flex:1;height:5px;background:rgba(255,255,255,.15);border-radius:4px;overflow:visible;
+    position:relative;cursor:pointer;
+  }
+  .progress-track::before{
+    content:'';position:absolute;left:0;right:0;top:-10px;bottom:-10px;
+  }
+  .progress-fill{height:100%;background:var(--amber);width:0%;border-radius:4px;pointer-events:none;}
+
+  .eq{display:flex;align-items:flex-end;gap:3px;height:22px;justify-content:center;}
+  .eq span{width:3px;background:var(--teal);border-radius:2px;height:20%;transition:height .08s linear;}
+
+  .buttons-row{display:flex;align-items:center;justify-content:center;gap:14px;}
+  .ctrl-btn{
+    width:46px;height:46px;border-radius:50%;border:1px solid rgba(255,255,255,.2);
+    background:rgba(255,255,255,.06);color:var(--paper);cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .ctrl-btn.play{width:58px;height:58px;background:var(--amber);border-color:var(--amber);color:var(--ink-900);}
+  .ctrl-btn.back{position:absolute;left:0;}
+  .buttons-row{position:relative;}
+  .ctrl-btn svg{width:20px;height:20px;}
+  .ctrl-btn.play svg{width:24px;height:24px;}
+
+  #yt-player-div{width:196px;height:110px;}
+
+  .dropzone{
+    position:relative;border:2px dashed var(--ink-700);border-radius:12px;
+    padding:22px 14px;text-align:center;transition:border-color .15s,background .15s;
+  }
+  .dropzone.drag{border-color:var(--teal);background:rgba(66,226,184,.08);}
+  .dropzone input[type="file"]{
+    position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;
+  }
+  .dropzone-text{margin:0;font-size:13px;color:var(--paper-dim);}
+  .dropzone-filename{
+    margin:10px 0 0;font-size:13px;color:var(--teal);
+    font-family:'JetBrains Mono',monospace;word-break:break-all;display:none;
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="yt-inset" id="yt-inset" style="display:none;">
+    <div id="yt-player-div"></div>
+  </div>
+
+  <!-- ============ SETUP VIEW ============ -->
+  <section id="view-setup" class="view active">
+    <div class="brand">
+      <span class="mark">가사싱크</span>
+      <span class="sub">LYRIC SYNC PLAYER</span>
+    </div>
+    <p class="tagline">음원을 재생하면서 가사를 박자에 맞춰 한 줄씩 보여줍니다.</p>
+
+    <div class="card">
+      <h2>01 · 음원 소스</h2>
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="local" type="button">로컬 파일</button>
+        <button class="tab-btn" data-tab="youtube" type="button">유튜브 URL</button>
+      </div>
+
+      <div class="tab-panel active" data-panel="local">
+        <label class="field-label" for="local-file">mp3 등 오디오 파일 선택</label>
+        <div class="dropzone" id="dropzone">
+          <input type="file" id="local-file" accept="audio/*" />
+          <p class="dropzone-text">파일을 여기로 끌어놓거나 탭해서 선택하세요</p>
+          <p class="dropzone-filename" id="dropzone-filename"></p>
+        </div>
+        <p class="hint">파일은 브라우저 안에서만 재생되며 외부로 업로드되지 않습니다.</p>
+      </div>
+
+      <div class="tab-panel" data-panel="youtube">
+        <label class="field-label" for="yt-url">유튜브 영상 URL</label>
+        <input type="url" id="yt-url" placeholder="https://www.youtube.com/watch?v=..." />
+        <p class="hint">유튜브 정책상 플레이어는 화면 한쪽에 작게 표시됩니다(완전히 숨길 수 없음). 유료 멤버십 로그인이 필요한 영상은 재생 전 유튜브에 별도 로그인이 되어 있어야 합니다. 스포티파이·애플뮤직은 DRM으로 이 방식이 통하지 않습니다 — 하단 안내 참고.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>02 · 가사</h2>
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;">
+        <label class="field-label" for="lyrics-input">LRC 형식([mm:ss.xx]가사) 또는 줄바꿈으로 구분된 일반 가사</label>
+        <button type="button" id="lyrics-clear-btn" style="background:none;border:none;color:var(--paper-dim);font-size:11.5px;cursor:pointer;text-decoration:underline;white-space:nowrap;padding:0 0 6px;">🗑 가사 지우기</button>
+      </div>
+      <textarea id="lyrics-input" placeholder="[00:12.30]첫 번째 마디 가사&#10;[00:16.80]두 번째 마디 가사&#10;...&#10;&#10;또는 타임스탬프 없이 그냥 한 줄씩 붙여넣어도 됩니다 (재생 길이에 맞춰 자동 분배)."></textarea>
+      <p class="hint">타임스탬프가 있으면 정확히 그 시점에 맞춰 넘어가고, 없으면 음원 길이 전체를 줄 수로 나눠 균등 배분합니다.</p>
+      <button class="tapsync-btn" id="tapsync-open-btn" type="button" disabled>🎯 노래 들으며 가사 타이밍 직접 찍기</button>
+      <p class="hint">로컬 오디오 파일을 먼저 선택하면 활성화됩니다. 균등 배분 대신, 노래를 들으며 각 줄이 실제로 시작되는 순간 버튼(또는 스페이스바)을 누르면 정확한 타임스탬프가 자동으로 붙어요.</p>
+    </div>
+
+    <div class="card">
+      <h2>03 · 배경 색상</h2>
+      <div class="swatches" id="swatches">
+        <div class="swatch selected" data-color="#14121A" style="background:#14121A"></div>
+        <div class="swatch" data-color="#1B2A2E" style="background:#1B2A2E"></div>
+        <div class="swatch" data-color="#2E1B2A" style="background:#2E1B2A"></div>
+        <div class="swatch" data-color="#0E2233" style="background:#0E2233"></div>
+        <div class="swatch" data-color="#241B12" style="background:#241B12"></div>
+        <input type="color" id="custom-color" value="#14121A" title="직접 선택" />
+      </div>
+    </div>
+
+    <button class="start-btn" id="start-btn" type="button">재생 화면 시작 ▶</button>
+    <p id="setup-error"></p>
+  </section>
+
+  <!-- ============ PLAYER VIEW ============ -->
+  <section id="view-player" class="view">
+    <div class="stage">
+      <div class="lyric-line lyric-prev" id="lyric-prev">&nbsp;</div>
+      <div class="lyric-line lyric-current" id="lyric-current">재생 버튼을 눌러 시작하세요</div>
+      <div class="lyric-line lyric-next" id="lyric-next">&nbsp;</div>
+    </div>
+    <div class="control-bar">
+      <div id="player-error" style="display:none;background:rgba(232,93,93,.15);border:1px solid var(--danger);color:#ffdada;font-size:12.5px;padding:10px 12px;border-radius:10px;line-height:1.5;"></div>
+      <div class="progress-row">
+        <span class="time-txt mono" id="time-cur">00:00</span>
+        <div class="progress-track" id="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+        <span class="time-txt mono" id="time-dur">00:00</span>
+      </div>
+      <div class="eq" id="eq"></div>
+      <div class="buttons-row">
+        <button class="ctrl-btn back" id="back-btn" type="button" title="설정으로">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <button class="ctrl-btn" id="stop-btn" type="button" title="정지">
+          <svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="1.5"/></svg>
+        </button>
+        <button class="ctrl-btn play" id="play-btn" type="button" title="재생/일시정지">
+          <svg id="play-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TAP SYNC VIEW ============ -->
+  <section id="view-tapsync" class="view">
+    <div class="tapsync-progress" id="tapsync-progress">0 / 0</div>
+    <div class="tapsync-prev" id="tapsync-prev">&nbsp;</div>
+    <div class="tapsync-current" id="tapsync-current">-</div>
+    <button class="tap-btn" id="tapsync-tap-btn" type="button">탭! (스페이스바로도 가능)</button>
+    <div class="tapsync-done" id="tapsync-done" style="display:none;">
+      <button id="tapsync-apply-btn" type="button">완료 — 가사에 타이밍 적용하기 ▶</button>
+    </div>
+    <p class="tapsync-hint">노래를 재생하고, 위에 표시된 가사 줄이 <b>실제로 시작되는 순간</b> 탭 버튼을 누르세요.</p>
+    <div class="tapsync-controls">
+      <button id="tapsync-play-btn" type="button">▶ 재생</button>
+      <button id="tapsync-undo-btn" type="button">↩ 되돌리기</button>
+      <button id="tapsync-cancel-btn" type="button">✕ 취소</button>
+    </div>
+  </section>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---------------- state ---------------- */
+  const state = {
+    mode: 'local',          // 'local' | 'youtube'
+    lyrics: [],             // [{time, text}]
+    isTimed: false,
+    audio: null,
+    audioCtx: null,
+    analyser: null,
+    ytPlayer: null,
+    ytReady: false,
+    ytPollTimer: null,
+    duration: 0,
+    currentIndex: -1,
+    playing: false
+  };
+
+  /* ---------------- setup view wiring ---------------- */
+  const tabBtns = document.querySelectorAll('.tab-btn');
+  const tabPanels = document.querySelectorAll('.tab-panel');
+  tabBtns.forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      tabBtns.forEach(b=>b.classList.remove('active'));
+      tabPanels.forEach(p=>p.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelector(`.tab-panel[data-panel="${btn.dataset.tab}"]`).classList.add('active');
+      state.mode = btn.dataset.tab;
+      updateTapsyncAvailability();
+    });
+  });
+
+  let stageColor = '#14121A';
+  document.getElementById('swatches').addEventListener('click', (e)=>{
+    const sw = e.target.closest('.swatch');
+    if(!sw) return;
+    document.querySelectorAll('.swatch').forEach(s=>s.classList.remove('selected'));
+    sw.classList.add('selected');
+    stageColor = sw.dataset.color;
+    document.getElementById('custom-color').value = stageColor;
+    saveDraft();
+  });
+  document.getElementById('custom-color').addEventListener('input', (e)=>{
+    document.querySelectorAll('.swatch').forEach(s=>s.classList.remove('selected'));
+    stageColor = e.target.value;
+    saveDraft();
+  });
+
+  /* ---------------- local file: drag & drop + filename ---------------- */
+  const dropzone = document.getElementById('dropzone');
+  const localFileInput = document.getElementById('local-file');
+  const filenameEl = document.getElementById('dropzone-filename');
+
+  function showFileName(file){
+    if(file){
+      filenameEl.textContent = '선택됨: ' + file.name;
+      filenameEl.style.display = 'block';
+    } else {
+      filenameEl.style.display = 'none';
+    }
+  }
+
+  localFileInput.addEventListener('change', ()=>{
+    showFileName(localFileInput.files[0]);
+    updateTapsyncAvailability();
+  });
+
+  ['dragenter','dragover'].forEach(evt=>{
+    dropzone.addEventListener(evt, (e)=>{
+      e.preventDefault();
+      dropzone.classList.add('drag');
+    });
+  });
+  ['dragleave','drop'].forEach(evt=>{
+    dropzone.addEventListener(evt, (e)=>{
+      e.preventDefault();
+      dropzone.classList.remove('drag');
+    });
+  });
+  dropzone.addEventListener('drop', (e)=>{
+    const dtFiles = e.dataTransfer && e.dataTransfer.files;
+    if(dtFiles && dtFiles[0]){
+      localFileInput.files = dtFiles;
+      showFileName(dtFiles[0]);
+      updateTapsyncAvailability();
+    }
+  });
+
+  /* ---------------- draft autosave (lyrics / color / tab / yt url) ---------------- */
+  const LS_KEY = 'lyricSyncPlayer.draft';
+
+  function saveDraft(){
+    try{
+      localStorage.setItem(LS_KEY, JSON.stringify({
+        lyrics: document.getElementById('lyrics-input').value,
+        color: stageColor,
+        tab: document.querySelector('.tab-btn.active').dataset.tab,
+        ytUrl: document.getElementById('yt-url').value
+      }));
+    }catch(e){ /* localStorage unavailable, ignore */ }
+  }
+
+  function loadDraft(){
+    try{
+      const raw = localStorage.getItem(LS_KEY);
+      if(!raw) return;
+      const d = JSON.parse(raw);
+      if(d.lyrics) document.getElementById('lyrics-input').value = d.lyrics;
+      if(d.ytUrl) document.getElementById('yt-url').value = d.ytUrl;
+      if(d.color){
+        stageColor = d.color;
+        document.getElementById('custom-color').value = d.color;
+        document.querySelectorAll('.swatch').forEach(s=>{
+          s.classList.toggle('selected', s.dataset.color === d.color);
+        });
+      }
+      if(d.tab === 'youtube'){
+        document.querySelector('.tab-btn[data-tab="youtube"]').click();
+      }
+    }catch(e){ /* corrupt draft, ignore */ }
+  }
+
+  loadDraft();
+  document.getElementById('lyrics-input').addEventListener('input', saveDraft);
+  document.getElementById('yt-url').addEventListener('input', saveDraft);
+
+  document.getElementById('lyrics-clear-btn').addEventListener('click', ()=>{
+    document.getElementById('lyrics-input').value = '';
+    saveDraft();
+  });
+
+  function showError(msg){
+    const el = document.getElementById('setup-error');
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+  function clearError(){
+    document.getElementById('setup-error').style.display = 'none';
+  }
+
+  /* ---------------- LRC / lyrics parsing ---------------- */
+  function parseLyrics(raw){
+    const lines = raw.split(/\r?\n/);
+    const timeTagRe = /\[(\d{1,2}):(\d{2})(?:[.:](\d{1,2}))?\]/g;
+    let timed = [];
+    let plain = [];
+
+    lines.forEach(line=>{
+      const tags = [...line.matchAll(timeTagRe)];
+      if(tags.length > 0){
+        const text = line.replace(timeTagRe, '').trim();
+        tags.forEach(m=>{
+          const min = parseInt(m[1],10);
+          const sec = parseInt(m[2],10);
+          const frac = m[3] ? parseInt(m[3],10) / (m[3].length===1?10:100) : 0;
+          const t = min*60 + sec + frac;
+          if(text.length) timed.push({time:t, text});
+        });
+      } else if(line.trim().length){
+        plain.push(line.trim());
+      }
+    });
+
+    if(timed.length){
+      timed.sort((a,b)=>a.time-b.time);
+      return {isTimed:true, lyrics:timed};
+    }
+    return {isTimed:false, lyrics:plain.map(t=>({time:0, text:t}))};
+  }
+
+  function distributePlainLyrics(lyrics, duration){
+    const n = lyrics.length;
+    if(n === 0 || !duration) return lyrics;
+    const step = duration / n;
+    return lyrics.map((l,i)=>({time: i*step, text:l.text}));
+  }
+
+  /* ---------------- youtube helpers ---------------- */
+  function extractYouTubeId(url){
+    const re = /(?:youtube\.com\/(?:watch\?v=|embed\/|v\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+    const m = url.match(re);
+    return m ? m[1] : null;
+  }
+
+  /* ---------------- start button ---------------- */
+  document.getElementById('start-btn').addEventListener('click', async ()=>{
+    clearError();
+    const rawLyrics = document.getElementById('lyrics-input').value;
+    if(!rawLyrics.trim()){
+      showError('가사를 입력하거나 붙여넣어 주세요.');
+      return;
+    }
+    const parsed = parseLyrics(rawLyrics);
+    state.isTimed = parsed.isTimed;
+    state.lyrics = parsed.lyrics;
+
+    if(state.mode === 'local'){
+      const fileInput = document.getElementById('local-file');
+      if(!fileInput.files[0]){
+        showError('오디오 파일을 선택해 주세요.');
+        return;
+      }
+      setupLocalAudio(fileInput.files[0]);
+    } else {
+      const url = document.getElementById('yt-url').value.trim();
+      const vid = extractYouTubeId(url);
+      if(!vid){
+        showError('유효한 유튜브 URL을 입력해 주세요.');
+        return;
+      }
+      setupYouTube(vid);
+    }
+
+    document.documentElement.style.setProperty('--stage-bg', stageColor);
+    document.getElementById('view-player').style.background = stageColor;
+
+    state.currentIndex = -1;
+    renderLyricAt(0, true);
+    updateProgress(0, 0);
+    setPlayingUI(false);
+
+    document.getElementById('view-setup').classList.remove('active');
+    document.getElementById('view-player').classList.add('active');
+  });
+
+  document.getElementById('back-btn').addEventListener('click', ()=>{
+    document.getElementById('view-player').classList.remove('active');
+    document.getElementById('view-setup').classList.add('active');
+  });
+
+  /* ---------------- local audio setup ---------------- */
+  function setupLocalAudio(file){
+    teardownYouTube();
+    clearPlayerError();
+    document.getElementById('yt-inset').style.display = 'none';
+    buildEqBars(24);
+
+    if(state.audio){
+      state.audio.pause();
+      state.audio = null;
+    }
+    const audio = new Audio(URL.createObjectURL(file));
+    audio.preload = 'metadata';
+    state.audio = audio;
+    state.mode = 'local';
+
+    audio.addEventListener('loadedmetadata', ()=>{
+      state.duration = audio.duration;
+      document.getElementById('time-dur').textContent = formatTime(state.duration);
+      if(!state.isTimed){
+        state.lyrics = distributePlainLyrics(state.lyrics, state.duration);
+      }
+    });
+
+    audio.addEventListener('timeupdate', ()=>{
+      updateProgress(audio.currentTime, audio.duration);
+      renderLyricAt(audio.currentTime);
+    });
+    audio.addEventListener('ended', ()=>{ setPlayingUI(false); });
+  }
+
+  function ensureAnalyser(){
+    if(!state.audio || state.analyser) return;
+    try{
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const src = ctx.createMediaElementSource(state.audio);
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 64;
+      src.connect(analyser);
+      analyser.connect(ctx.destination);
+      state.audioCtx = ctx;
+      state.analyser = analyser;
+    }catch(e){ /* analyser optional */ }
+  }
+
+  function buildEqBars(n){
+    const eq = document.getElementById('eq');
+    eq.innerHTML = '';
+    for(let i=0;i<n;i++){
+      const s = document.createElement('span');
+      eq.appendChild(s);
+    }
+  }
+
+  let eqRAF = null;
+  function drawEq(){
+    if(!state.analyser){ eqRAF = requestAnimationFrame(drawEq); return; }
+    const data = new Uint8Array(state.analyser.frequencyBinCount);
+    state.analyser.getByteFrequencyData(data);
+    const bars = document.querySelectorAll('#eq span');
+    bars.forEach((bar,i)=>{
+      const v = data[i % data.length] || 0;
+      bar.style.height = Math.max(10, (v/255)*100) + '%';
+    });
+    eqRAF = requestAnimationFrame(drawEq);
+  }
+  function stopEq(){
+    if(eqRAF) cancelAnimationFrame(eqRAF);
+    eqRAF = null;
+    document.querySelectorAll('#eq span').forEach(b=>b.style.height='20%');
+  }
+
+  /* ---------------- youtube setup ---------------- */
+  function setupYouTube(videoId){
+    if(state.audio){ state.audio.pause(); state.audio = null; }
+    stopEq();
+    document.getElementById('eq').innerHTML = '';
+    document.getElementById('yt-inset').style.display = 'block';
+    state.mode = 'youtube';
+    clearPlayerError();
+
+    function createPlayer(){
+      state.ytPlayer = new YT.Player('yt-player-div', {
+        height: '110',
+        width: '196',
+        videoId: videoId,
+        playerVars: { autoplay: 0, controls: 1, rel: 0 },
+        events: {
+          onReady: ()=>{
+            state.ytReady = true;
+            clearPlayerError();
+            state.duration = state.ytPlayer.getDuration();
+            document.getElementById('time-dur').textContent = formatTime(state.duration);
+            if(!state.isTimed){
+              state.lyrics = distributePlainLyrics(state.lyrics, state.duration || 180);
+            }
+          },
+          onStateChange: (e)=>{
+            if(e.data === YT.PlayerState.PLAYING) setPlayingUI(true);
+            if(e.data === YT.PlayerState.PAUSED) setPlayingUI(false);
+            if(e.data === YT.PlayerState.ENDED) setPlayingUI(false);
+          },
+          onError: ()=>{
+            showPlayerError('유튜브 영상을 불러올 수 없습니다. 비공개/연령제한 영상이거나 URL을 다시 확인해 주세요.');
+          }
+        }
+      });
+    }
+
+    if(window.YT && window.YT.Player){
+      createPlayer();
+    } else {
+      window.onYouTubeIframeAPIReady = createPlayer;
+      if(!document.getElementById('yt-iframe-api')){
+        const tag = document.createElement('script');
+        tag.id = 'yt-iframe-api';
+        tag.src = 'https://www.youtube.com/iframe_api';
+        document.head.appendChild(tag);
+      }
+    }
+
+    // 이 화면이 외부 사이트 로딩이 차단된 미리보기(예: 앱 내 미리보기)일 경우
+    // 유튜브 API가 영영 로드되지 않을 수 있어, 일정 시간 후 안내 메시지를 띄운다.
+    setTimeout(()=>{
+      if(!state.ytReady){
+        showPlayerError('유튜브 플레이어가 준비되지 않았습니다. 지금 보고 있는 화면이 앱 내부 미리보기라면, 유튜브 같은 외부 사이트 로딩이 차단되어 있을 수 있습니다. 파일을 다운로드해 Safari/Chrome 브라우저에서 직접 열어 다시 시도해 주세요.');
+      }
+    }, 6000);
+
+    if(state.ytPollTimer) clearInterval(state.ytPollTimer);
+    state.ytPollTimer = setInterval(()=>{
+      if(state.ytPlayer && state.ytReady && typeof state.ytPlayer.getCurrentTime === 'function'){
+        const t = state.ytPlayer.getCurrentTime();
+        const d = state.ytPlayer.getDuration();
+        updateProgress(t, d);
+        renderLyricAt(t);
+      }
+    }, 200);
+  }
+
+  function teardownYouTube(){
+    if(state.ytPollTimer){ clearInterval(state.ytPollTimer); state.ytPollTimer = null; }
+    if(state.ytPlayer && state.ytPlayer.destroy){ state.ytPlayer.destroy(); }
+    state.ytPlayer = null;
+    state.ytReady = false;
+  }
+
+  /* ---------------- lyric rendering ---------------- */
+  function findIndexAt(t){
+    const arr = state.lyrics;
+    if(!arr.length) return -1;
+    let lo = 0, hi = arr.length - 1, ans = -1;
+    while(lo <= hi){
+      const mid = (lo+hi)>>1;
+      if(arr[mid].time <= t){ ans = mid; lo = mid+1; } else { hi = mid-1; }
+    }
+    return ans;
+  }
+
+  function renderLyricAt(t, force){
+    const idx = findIndexAt(t);
+    if(idx === state.currentIndex && !force) return;
+    state.currentIndex = idx;
+    const arr = state.lyrics;
+    const curEl = document.getElementById('lyric-current');
+    const prevEl = document.getElementById('lyric-prev');
+    const nextEl = document.getElementById('lyric-next');
+    curEl.textContent = idx>=0 ? arr[idx].text : '\u00A0';
+    prevEl.textContent = idx>0 ? arr[idx-1].text : '\u00A0';
+    nextEl.textContent = (idx>=0 && idx+1<arr.length) ? arr[idx+1].text : '\u00A0';
+    curEl.classList.remove('pulse');
+    requestAnimationFrame(()=>curEl.classList.add('pulse'));
+  }
+
+  function updateProgress(cur, dur){
+    document.getElementById('time-cur').textContent = formatTime(cur||0);
+    if(dur) document.getElementById('time-dur').textContent = formatTime(dur);
+    const pct = dur ? Math.min(100,(cur/dur)*100) : 0;
+    document.getElementById('progress-fill').style.width = pct + '%';
+  }
+
+  function formatTime(s){
+    if(!isFinite(s) || s<0) s=0;
+    const m = Math.floor(s/60);
+    const sec = Math.floor(s%60);
+    return String(m).padStart(2,'0') + ':' + String(sec).padStart(2,'0');
+  }
+
+  function showPlayerError(msg){
+    const el = document.getElementById('player-error');
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+  function clearPlayerError(){
+    document.getElementById('player-error').style.display = 'none';
+  }
+
+  /* ---------------- transport controls ---------------- */
+  function setPlayingUI(playing){
+    state.playing = playing;
+    const icon = document.getElementById('play-icon');
+    icon.innerHTML = playing
+      ? '<rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/>'
+      : '<path d="M8 5v14l11-7z"/>';
+    if(playing && state.mode==='local'){ ensureAnalyser(); if(state.audioCtx && state.audioCtx.state==='suspended') state.audioCtx.resume(); drawEq(); }
+    if(!playing) stopEq();
+  }
+
+  document.getElementById('play-btn').addEventListener('click', ()=>{
+    if(state.mode === 'local' && state.audio){
+      if(state.audio.paused){
+        ensureAnalyser();
+        if(state.audioCtx && state.audioCtx.state==='suspended') state.audioCtx.resume();
+        const p = state.audio.play();
+        if(p && p.catch){
+          p.then(()=>clearPlayerError()).catch(err=>{
+            showPlayerError('오디오 재생에 실패했습니다: ' + (err && err.message ? err.message : '알 수 없는 오류') + '. 파일 형식을 확인하거나 브라우저에서 직접 열어 다시 시도해 주세요.');
+          });
+        }
+        setPlayingUI(true);
+      }
+      else { state.audio.pause(); setPlayingUI(false); }
+    } else if(state.mode === 'youtube' && state.ytPlayer && state.ytReady){
+      const s = state.ytPlayer.getPlayerState();
+      if(s === YT.PlayerState.PLAYING){ state.ytPlayer.pauseVideo(); }
+      else { state.ytPlayer.playVideo(); }
+    }
+  });
+
+  document.getElementById('stop-btn').addEventListener('click', ()=>{
+    if(state.mode === 'local' && state.audio){
+      state.audio.pause();
+      state.audio.currentTime = 0;
+    } else if(state.mode === 'youtube' && state.ytPlayer && state.ytReady){
+      state.ytPlayer.pauseVideo();
+      state.ytPlayer.seekTo(0, true);
+    }
+    setPlayingUI(false);
+    state.currentIndex = -1;
+    renderLyricAt(0, true);
+    updateProgress(0, state.duration);
+  });
+
+  /* ---------------- progress bar: click/drag to seek ---------------- */
+  const progressTrack = document.getElementById('progress-track');
+
+  function seekToRatio(ratio){
+    ratio = Math.min(1, Math.max(0, ratio));
+    if(state.mode === 'local' && state.audio){
+      const dur = state.audio.duration || state.duration || 0;
+      if(dur){
+        state.audio.currentTime = ratio * dur;
+        updateProgress(state.audio.currentTime, dur);
+        renderLyricAt(state.audio.currentTime);
+      }
+    } else if(state.mode === 'youtube' && state.ytPlayer && state.ytReady){
+      const dur = (state.ytPlayer.getDuration && state.ytPlayer.getDuration()) || state.duration || 0;
+      if(dur){
+        const t = ratio * dur;
+        state.ytPlayer.seekTo(t, true);
+        updateProgress(t, dur);
+        renderLyricAt(t);
+      }
+    }
+  }
+
+  function ratioFromEvent(e){
+    const rect = progressTrack.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    return x / rect.width;
+  }
+
+  let isScrubbing = false;
+  progressTrack.addEventListener('pointerdown', (e)=>{
+    isScrubbing = true;
+    seekToRatio(ratioFromEvent(e));
+  });
+  progressTrack.addEventListener('pointermove', (e)=>{
+    if(!isScrubbing) return;
+    seekToRatio(ratioFromEvent(e));
+  });
+  window.addEventListener('pointerup', ()=>{ isScrubbing = false; });
+
+  /* ---------------- tap sync (manual timing) ---------------- */
+  const tapSync = { lines: [], idx: 0, timestamps: [] };
+
+  function stripTimeTags(line){
+    return line.replace(/\[(\d{1,2}):(\d{2})(?:[.:](\d{1,2}))?\]/g, '').trim();
+  }
+
+  /* unified playback helpers across local <audio> and YouTube iframe */
+  function tsGetTime(){
+    if(state.mode === 'local' && state.audio) return state.audio.currentTime;
+    if(state.mode === 'youtube' && state.ytPlayer && state.ytReady && typeof state.ytPlayer.getCurrentTime === 'function'){
+      return state.ytPlayer.getCurrentTime();
+    }
+    return 0;
+  }
+  function tsPlay(){
+    if(state.mode === 'local' && state.audio) state.audio.play();
+    else if(state.mode === 'youtube' && state.ytPlayer && state.ytReady) state.ytPlayer.playVideo();
+  }
+  function tsPause(){
+    if(state.mode === 'local' && state.audio) state.audio.pause();
+    else if(state.mode === 'youtube' && state.ytPlayer && state.ytReady) state.ytPlayer.pauseVideo();
+  }
+  function tsIsPaused(){
+    if(state.mode === 'local' && state.audio) return state.audio.paused;
+    if(state.mode === 'youtube' && state.ytPlayer && state.ytReady && window.YT){
+      return state.ytPlayer.getPlayerState() !== YT.PlayerState.PLAYING;
+    }
+    return true;
+  }
+  function tsResetToStart(){
+    if(state.mode === 'local' && state.audio) state.audio.currentTime = 0;
+    else if(state.mode === 'youtube' && state.ytPlayer && state.ytReady) state.ytPlayer.seekTo(0, true);
+  }
+
+  function updateTapsyncAvailability(){
+    const btn = document.getElementById('tapsync-open-btn');
+    const hasFile = document.getElementById('local-file').files.length > 0;
+    const hasYtUrl = !!extractYouTubeId(document.getElementById('yt-url').value.trim());
+    btn.disabled = !((state.mode === 'local' && hasFile) || (state.mode === 'youtube' && hasYtUrl));
+  }
+  updateTapsyncAvailability();
+  document.getElementById('yt-url').addEventListener('input', updateTapsyncAvailability);
+
+  function renderTapsync(){
+    const {lines, idx} = tapSync;
+    document.getElementById('tapsync-progress').textContent = idx + ' / ' + lines.length;
+    document.getElementById('tapsync-prev').textContent = idx>0 ? lines[idx-1] : '\u00A0';
+    document.getElementById('tapsync-current').textContent = idx < lines.length ? lines[idx] : '🎉 모든 줄 완료! 아래 버튼을 눌러 적용하세요.';
+  }
+
+  function openTapsyncView(lines){
+    tapSync.lines = lines;
+    tapSync.idx = 0;
+    tapSync.timestamps = [];
+    renderTapsync();
+    document.getElementById('tapsync-done').style.display = 'none';
+    document.getElementById('tapsync-tap-btn').style.display = 'block';
+    document.getElementById('tapsync-tap-btn').disabled = false;
+    document.getElementById('tapsync-play-btn').textContent = '▶ 재생';
+    document.getElementById('view-setup').classList.remove('active');
+    document.getElementById('view-tapsync').classList.add('active');
+  }
+
+  document.getElementById('tapsync-open-btn').addEventListener('click', ()=>{
+    clearError();
+    const raw = document.getElementById('lyrics-input').value;
+    const lines = raw.split(/\r?\n/).map(stripTimeTags).filter(l=>l.length);
+    if(!lines.length){
+      showError('가사를 먼저 입력해 주세요.');
+      return;
+    }
+
+    if(state.mode === 'local'){
+      const file = document.getElementById('local-file').files[0];
+      if(!file){
+        showError('오디오 파일을 먼저 선택해 주세요.');
+        return;
+      }
+      setupLocalAudio(file);
+      openTapsyncView(lines);
+    } else {
+      const url = document.getElementById('yt-url').value.trim();
+      const vid = extractYouTubeId(url);
+      if(!vid){
+        showError('유효한 유튜브 URL을 입력해 주세요.');
+        return;
+      }
+      setupYouTube(vid);
+      document.getElementById('tapsync-current').textContent = '유튜브 플레이어를 불러오는 중...';
+      document.getElementById('tapsync-tap-btn').disabled = true;
+      document.getElementById('view-setup').classList.remove('active');
+      document.getElementById('view-tapsync').classList.add('active');
+      const waitReady = setInterval(()=>{
+        if(state.ytReady){
+          clearInterval(waitReady);
+          openTapsyncView(lines);
+        }
+      }, 200);
+      setTimeout(()=>{ clearInterval(waitReady); }, 10000);
+    }
+  });
+
+  function tapNext(){
+    if(tapSync.idx >= tapSync.lines.length) return;
+    tapSync.timestamps.push(tsGetTime());
+    tapSync.idx++;
+    renderTapsync();
+    if(tapSync.idx >= tapSync.lines.length){
+      document.getElementById('tapsync-tap-btn').style.display = 'none';
+      document.getElementById('tapsync-done').style.display = 'block';
+      tsPause();
+      document.getElementById('tapsync-play-btn').textContent = '▶ 재생';
+    }
+  }
+
+  document.getElementById('tapsync-tap-btn').addEventListener('click', tapNext);
+
+  document.addEventListener('keydown', (e)=>{
+    if(document.getElementById('view-tapsync').classList.contains('active') && e.code === 'Space'){
+      e.preventDefault();
+      if(!document.getElementById('tapsync-tap-btn').disabled) tapNext();
+    }
+  });
+
+  document.getElementById('tapsync-undo-btn').addEventListener('click', ()=>{
+    if(tapSync.timestamps.length === 0) return;
+    tapSync.timestamps.pop();
+    tapSync.idx = Math.max(0, tapSync.idx - 1);
+    document.getElementById('tapsync-tap-btn').style.display = 'block';
+    document.getElementById('tapsync-done').style.display = 'none';
+    renderTapsync();
+  });
+
+  document.getElementById('tapsync-play-btn').addEventListener('click', ()=>{
+    if(tsIsPaused()){
+      tsPlay();
+      document.getElementById('tapsync-play-btn').textContent = '❚❚ 일시정지';
+    } else {
+      tsPause();
+      document.getElementById('tapsync-play-btn').textContent = '▶ 재생';
+    }
+  });
+
+  document.getElementById('tapsync-cancel-btn').addEventListener('click', ()=>{
+    document.getElementById('view-tapsync').classList.remove('active');
+    document.getElementById('view-setup').classList.add('active');
+    try{ tsPause(); }catch(e){ console.error('tsPause failed', e); }
+  });
+
+  document.getElementById('tapsync-apply-btn').addEventListener('click', ()=>{
+    const lrcLines = tapSync.lines.map((text,i)=>{
+      const t = tapSync.timestamps[i] || 0;
+      const m = Math.floor(t/60);
+      const s = t % 60;
+      const tag = String(m).padStart(2,'0') + ':' + s.toFixed(2).padStart(5,'0');
+      return `[${tag}]${text}`;
+    });
+    document.getElementById('lyrics-input').value = lrcLines.join('\n');
+    saveDraft();
+    document.getElementById('view-tapsync').classList.remove('active');
+    document.getElementById('view-setup').classList.add('active');
+    try{ tsPause(); }catch(e){ console.error('tsPause failed', e); }
+    try{ tsResetToStart(); }catch(e){ console.error('tsResetToStart failed', e); }
+  });
+
+})();
+</script>
+</body>
+</html>
