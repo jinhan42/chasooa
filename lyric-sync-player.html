@@ -626,6 +626,7 @@
 
   /* ---------------- youtube setup ---------------- */
   function setupYouTube(videoId){
+    teardownYouTube();
     if(state.audio){ state.audio.pause(); state.audio = null; }
     stopEq();
     document.getElementById('eq').innerHTML = '';
