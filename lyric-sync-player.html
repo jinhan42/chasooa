@@ -303,6 +303,7 @@
   <!-- ============ TAP SYNC VIEW ============ -->
   <section id="view-tapsync" class="view">
     <div class="tapsync-progress" id="tapsync-progress">0 / 0</div>
+    <div class="tapsync-progress" id="tapsync-livetime" style="color:var(--teal);">현재 재생 시간: 0.0초</div>
     <div class="tapsync-prev" id="tapsync-prev">&nbsp;</div>
     <div class="tapsync-current" id="tapsync-current">-</div>
     <button class="tap-btn" id="tapsync-tap-btn" type="button">탭! (스페이스바로도 가능)</button>
@@ -885,6 +886,18 @@
     document.getElementById('tapsync-current').textContent = idx < lines.length ? lines[idx] : '🎉 모든 줄 완료! 아래 버튼을 눌러 적용하세요.';
   }
 
+  let tapsyncLiveTimer = null;
+  function startTapsyncLiveTime(){
+    if(tapsyncLiveTimer) clearInterval(tapsyncLiveTimer);
+    tapsyncLiveTimer = setInterval(()=>{
+      const el = document.getElementById('tapsync-livetime');
+      if(el) el.textContent = '현재 재생 시간: ' + tsGetTime().toFixed(1) + '초';
+    }, 200);
+  }
+  function stopTapsyncLiveTime(){
+    if(tapsyncLiveTimer){ clearInterval(tapsyncLiveTimer); tapsyncLiveTimer = null; }
+  }
+
   function openTapsyncView(lines){
     tapSync.lines = lines;
     tapSync.idx = 0;
@@ -896,6 +909,7 @@
     document.getElementById('tapsync-play-btn').textContent = '▶ 재생';
     document.getElementById('view-setup').classList.remove('active');
     document.getElementById('view-tapsync').classList.add('active');
+    startTapsyncLiveTime();
   }
 
   document.getElementById('tapsync-open-btn').addEventListener('click', ()=>{
@@ -981,6 +995,7 @@
   document.getElementById('tapsync-cancel-btn').addEventListener('click', ()=>{
     document.getElementById('view-tapsync').classList.remove('active');
     document.getElementById('view-setup').classList.add('active');
+    stopTapsyncLiveTime();
     try{ tsPause(); }catch(e){ console.error('tsPause failed', e); }
   });
 
@@ -996,6 +1011,7 @@
     saveDraft();
     document.getElementById('view-tapsync').classList.remove('active');
     document.getElementById('view-setup').classList.add('active');
+    stopTapsyncLiveTime();
     try{ tsPause(); }catch(e){ console.error('tsPause failed', e); }
     try{ tsResetToStart(); }catch(e){ console.error('tsResetToStart failed', e); }
   });
